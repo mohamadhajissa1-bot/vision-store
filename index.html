@@ -240,6 +240,17 @@ section{position:relative}
 .chip-btn{height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;font-size:13.5px;font-weight:500;color:var(--text-2);transition:all .25s var(--ease)}
 .chip-btn:hover{color:var(--text);border-color:var(--line-2)}
 .chip-btn[aria-pressed=true]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.store-bar .chips{width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px;-webkit-mask-image:linear-gradient(90deg,#000 92%,transparent);mask-image:linear-gradient(90deg,#000 92%,transparent)}
+.store-bar .chips::-webkit-scrollbar{display:none}
+.store-bar .chips{align-items:center}
+.store-bar .chips>*{flex:none}
+.store-bar .sortbox{margin-left:auto}
+.store-bar .search{margin-left:0;flex:1;max-width:460px}
+.chip-btn small{margin-left:6px;font-size:11.5px;font-weight:600;opacity:.6}
+.chip-sep{width:1px;height:24px;background:var(--line);margin:0 6px;align-self:center}
+.chip-btn.fw{height:34px;padding:0 13px;font-size:12.5px;border-style:dashed}
+.chip-btn.fw[aria-pressed=true]{background:var(--red);border-color:var(--red);color:#fff;border-style:solid}
+.chips-label{font-family:var(--display);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);align-self:center;margin-right:2px}
 .search{position:relative;margin-left:auto}
 .search svg{position:absolute;left:14px;top:50%;width:16px;height:16px;transform:translateY(-50%);color:var(--text-3)}
 .search input{height:42px;width:280px;padding:0 16px 0 40px;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-sm);font-size:14px;transition:border-color .2s,box-shadow .2s}
@@ -1291,6 +1302,13 @@ const CONFIG = {
     text: "The discount is applied automatically to your basket when you add a script, and you'll see it at checkout.",
   },
   DOCS_URL: "https://visionstore.gitbook.io/visionstore-docs",
+  // SERIES / FILTERS shown above the scripts grid.
+  // Every Tebex category becomes a filter automatically (except the general one named "All Scripts").
+  // Series below are extra filters you control here, so a script can sit in several series at once.
+  //   match: a word in the script name (case-insensitive)   ids: Tebex package IDs
+  SERIES: [
+    { name: "Creator Series", match: "creator" },
+  ],
   // Docs page per Tebex package ID (falls back to DOCS_URL)
   DOCS: {
     7733797: "https://visionstore.gitbook.io/visionstore-docs/scripts/boxing-creator",
@@ -1321,7 +1339,7 @@ const store = {
 const EXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
 const ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
-let categories = [], packages = [], activeCat = "all", currency = "USD", basket = null;
+let categories = [], packages = [], activeCat = "all", activeFw = "", currency = "USD", basket = null;
 
 $$(".js-discord").forEach(a => a.href = CONFIG.DISCORD_URL);
 /* promotion surfaces */
@@ -1425,19 +1443,46 @@ async function loadCatalogue(){
   }
 }
 
-function renderDropdown(){
-  const cats = categories.filter(c => (c.packages || []).length);
-  $("#ddList").innerHTML = `<a href="#store" data-cat="all">All scripts <small>${packages.length || "Soon"}</small></a>` +
-    cats.map(c => `<a href="#store" data-cat="${c.id}">${esc(c.name)} <small>${c.packages.length}</small></a>`).join("");
+/* ---------- series & filters ---------- */
+const GENERAL_CAT = /^(all\s*scripts?|packages|scripts|all)$/i;
+function seriesOf(p){
+  const out = [];
+  if(p._cat && !GENERAL_CAT.test(p._cat.trim())) out.push(p._cat.trim());
+  for(const s of (CONFIG.SERIES || [])){
+    const hit = (s.ids || []).map(String).includes(String(p.id)) || (s.match && new RegExp(String(s.match).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(nameParts(p).title));
+    if(hit && !out.includes(s.name)) out.push(s.name);
+  }
+  return out;
 }
-$("#ddList").addEventListener("click", e => { const a = e.target.closest("[data-cat]"); if(!a) return; activeCat = a.dataset.cat; renderChips(); renderGrid(); $("#scriptsDd").classList.remove("open"); });
+function seriesList(){
+  const counts = new Map();
+  packages.forEach(p => seriesOf(p).forEach(n => counts.set(n, (counts.get(n) || 0) + 1)));
+  return [...counts].map(([name, n]) => ({name, n}));
+}
+const seriesLabel = p => seriesOf(p)[0] || "FiveM Script";
+const matchesFilters = p => (activeCat === "all" || seriesOf(p).includes(activeCat)) && (!activeFw || frameworks(p).includes(activeFw));
+function setSeries(name){ activeCat = name; renderChips(); renderGrid(); }
+
+function renderDropdown(){
+  $("#ddList").innerHTML = `<a href="#store" data-cat="all">All scripts <small>${packages.length || "Soon"}</small></a>` +
+    seriesList().map(s => `<a href="#store" data-cat="${esc(s.name)}">${esc(s.name)} <small>${s.n}</small></a>`).join("");
+}
+$("#ddList").addEventListener("click", e => { const a = e.target.closest("[data-cat]"); if(!a) return; activeFw = ""; setSeries(a.dataset.cat); $("#scriptsDd").classList.remove("open"); });
 
 function renderChips(){
-  const cats = categories.filter(c => (c.packages || []).length);
   $("#storeBar").hidden = !packages.length;
-  $("#chips").innerHTML = cats.length > 1 ? [{id:"all", name:"All"}, ...cats].map(c => `<button class="chip-btn" data-cat="${c.id}" aria-pressed="${String(c.id) === String(activeCat)}">${esc(c.name)}</button>`).join("") : "";
+  const series = seriesList();
+  const fws = FW.map(([n]) => n).filter(n => packages.some(p => frameworks(p).includes(n)));
+  const chip = (val, label, n) => `<button class="chip-btn" data-cat="${esc(val)}" aria-pressed="${val === activeCat}">${esc(label)}${n != null ? `<small>${n}</small>` : ""}</button>`;
+  $("#chips").innerHTML = chip("all", "All scripts", packages.length) + series.map(s => chip(s.name, s.name, s.n)).join("") +
+    (fws.length > 1 ? `<span class="chip-sep" aria-hidden="true"></span><span class="chips-label">Framework</span>` +
+      fws.map(f => `<button class="chip-btn fw" data-fw="${f}" aria-pressed="${f === activeFw}">${f}</button>`).join("") : "");
 }
-$("#chips").addEventListener("click", e => { const b = e.target.closest(".chip-btn"); if(!b) return; activeCat = b.dataset.cat; renderChips(); renderGrid(); });
+$("#chips").addEventListener("click", e => {
+  const b = e.target.closest(".chip-btn"); if(!b) return;
+  if(b.dataset.fw != null){ activeFw = activeFw === b.dataset.fw ? "" : b.dataset.fw; renderChips(); renderGrid(); return; }
+  setSeries(b.dataset.cat);
+});
 $("#search").addEventListener("input", renderGrid);
 
 function priceInfo(p){
@@ -1472,11 +1517,11 @@ function renderGrid(){
   const grid = $("#grid");
   if(!packages.length){ grid.innerHTML = comingSoon(); return; }
   const q = $("#search").value.trim().toLowerCase();
-  const list = packages.filter(p => (activeCat === "all" || String(p._catId) === String(activeCat)) && (!q || (p.name + " " + strip(p.description)).toLowerCase().includes(q)));
-  if(!list.length){ grid.innerHTML = `<div class="no-results"><h3>No scripts match “${esc(q)}”</h3><p>Try another search or category.</p></div>`; return; }
+  const list = packages.filter(p => matchesFilters(p) && (!q || (p.name + " " + strip(p.description)).toLowerCase().includes(q)));
+  if(!list.length){ grid.innerHTML = `<div class="no-results"><h3>${q ? `No scripts match “${esc(q)}”` : "No scripts in this filter yet"}</h3><p>Try another search, series or framework.</p></div>`; return; }
   const mode = $("#sort").value;
   const ranked = sortList(list, mode);
-  const spot = mode === "rec" && !q && activeCat === "all" && ranked.length >= 3;
+  const spot = mode === "rec" && !q && activeCat === "all" && !activeFw && ranked.length >= 3;
   grid.innerHTML = ranked.map((p, i) => cardHtml(p, i, spot && i === 0)).join("");
   observeCards(); watchImpressions(grid);
 }
@@ -1494,7 +1539,7 @@ function cardHtml(p, i, isSpot){
         <div class="body">
           ${isSpot ? `<span class="spot-label" title="Ranked #1 by our recommendation score: popularity, momentum, conversion and value"><i></i>Featured pick</span>` : ""}
           ${t2 ? `<div class="tagrow">${tagHtml(t2, true)}</div>` : ""}
-          ${p._cat ? `<span class="cat">${esc(p._cat)}</span>` : ""}
+          <span class="cat">${esc(seriesLabel(p))}</span>
           <h3><a href="${productHash(p)}">${esc(nameParts(p).title)}</a></h3>
           ${nameParts(p).sub ? `<p class="sub">${esc(nameParts(p).sub)}</p>` : ""}
           <p class="desc">${esc(strip(p.description)) || "&nbsp;"}</p>
@@ -1716,7 +1761,7 @@ function renderProduct(p){
   $("#ppView").classList.remove("pp-in"); void $("#ppView").offsetWidth; $("#ppView").classList.add("pp-in");
   const np = nameParts(p);
   $("#ppCrumb").textContent = np.title;
-  $("#ppCat").textContent = p._cat || "Script";
+  $("#ppCat").textContent = seriesLabel(p);
   $("#ppName").textContent = np.title;
   $("#ppSub").textContent = np.sub; $("#ppSub").hidden = !np.sub;
   $("#ppTag").textContent = st.tag; $("#ppTag").hidden = !st.tag;
@@ -1732,7 +1777,7 @@ function renderProduct(p){
   $("#ppSupport").href = CONFIG.DISCORD_URL;
   $("#ppWatch").hidden = !vids.length;
   $("#ppSupport").classList.toggle("full", !!vids.length);
-  const specs = [["Category", p._cat || "Script"], ["Frameworks", fw.length ? fw.join(" · ") : "See description"], ["Delivery", "Cfx.re Keymaster"], ["Media", `${imgs.length} image${imgs.length === 1 ? "" : "s"}${vids.length ? ` · ${vids.length} video${vids.length === 1 ? "" : "s"}` : ""}`]];
+  const specs = [["Series", seriesOf(p).join(" · ") || "FiveM Script"], ["Frameworks", fw.length ? fw.join(" · ") : "See description"], ["Delivery", "Cfx.re Keymaster"], ["Media", `${imgs.length} image${imgs.length === 1 ? "" : "s"}${vids.length ? ` · ${vids.length} video${vids.length === 1 ? "" : "s"}` : ""}`]];
   if(fmtDate(p.updated_at)) specs.push(["Last updated", fmtDate(p.updated_at)]);
   $("#ppSpecs").innerHTML = specs.map(([k, v]) => `<li><span>${k}</span><b>${esc(v)}</b></li>`).join("");
   $("#ppBarName").textContent = np.title; $("#ppBarPrice").innerHTML = money(pi.now, pi.cur) + (pi.save > 0.009 ? ` <s style="opacity:.6">${money(pi.list, pi.cur)}</s>` : "");
