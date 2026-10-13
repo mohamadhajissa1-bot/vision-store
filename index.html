@@ -1471,12 +1471,12 @@ function renderGrid(){
 }
 const productHash = p => "#/scripts/" + encodeURIComponent(slugOf(p));
 function cardHtml(p, i, isSpot){
-    const fw = frameworks(p), I = intel(p), [t1, t2] = I.tags;
+    const fw = frameworks(p), I = intel(p), hasNew = I.tags.some(t => t.key === "new"), [t1, t2] = I.tags.filter(t => t.key !== "new");
     return `<article class="card${isSpot ? " spot" : ""}" data-pid="${p.id}" style="transition-delay:${Math.min(i || 0,8)*70}ms">
       <div class="card-in">
         <a class="thumb" href="${productHash(p)}" aria-label="View ${esc(p.name)}">
           ${p.image ? `<img class="bg" src="${esc(p.image)}" alt="" loading="lazy" aria-hidden="true"><img class="fg" src="${esc(p.image)}" alt="" loading="lazy">` : `<div class="ph"><img src="${LOGO}" alt=""></div>`}
-          <div class="tags">${PROMO ? `<span class="tag promo">-${priceInfo(p).pct}%</span>` : (p.discount > 0 ? `<span class="tag sale">Sale</span>` : "")}</div>
+          <div class="tags">${PROMO ? `<span class="tag promo">-${priceInfo(p).pct}%</span>` : (p.discount > 0 ? `<span class="tag sale">Sale</span>` : "")}${hasNew ? `<span class="tag new">New</span>` : ""}</div>
           ${mediaCount(p)}
           ${t1 ? `<span class="ribbon">${tagHtml(t1)}</span>` : ""}
         </a>
@@ -1710,7 +1710,7 @@ function renderProduct(p){
   $("#ppSub").textContent = np.sub; $("#ppSub").hidden = !np.sub;
   $("#ppTag").textContent = st.tag; $("#ppTag").hidden = !st.tag;
   $("#ppFw").innerHTML = fw.map(f => `<span>${f}</span>`).join(""); $("#ppFw").hidden = !fw.length;
-  $("#ppTags").innerHTML = intel(p).tags.slice(0, 4).map(t => tagHtml(t)).join("");
+  $("#ppTags").innerHTML = intel(p).tags.slice(0, 4).map(t => t.key === "new" ? `<span class="tag new">New</span>` : tagHtml(t)).join("");
   $("#ppProof").innerHTML = proofLines(p);
   tracker.push("view", [p.id]);
   const pi = priceInfo(p);
