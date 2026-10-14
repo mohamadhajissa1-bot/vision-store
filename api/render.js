@@ -24,6 +24,8 @@ export async function GET(request) {
   if (slugOf(p) !== slug) return Response.redirect(pageUrl, 301); // old slug or numeric ID → canonical URL
 
   const data = seoData(shell), seo = seoFor(p, data), np = nameParts(p);
+  const extra = ((data.products || {})[p.id]) || {};
+  const faq = Array.isArray(extra.faq) ? extra.faq : [];
   const fws = frameworks(p), fwTxt = fws.length ? fws.join(", ") : "QBox, QBCore & ESX";
   const text = plain(p.description);
   const img = p.image || `${SITE}/logo.webp`;
@@ -47,6 +49,10 @@ export async function GET(request) {
         seller: { "@type": "Organization", name: "Vision Scripts", url: `${SITE}/` }
       }
     },
+    ...(faq.length ? [{
+      "@context": "https://schema.org", "@type": "FAQPage",
+      mainEntity: faq.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } }))
+    }] : []),
     {
       "@context": "https://schema.org", "@type": "BreadcrumbList",
       itemListElement: [
@@ -60,11 +66,14 @@ export async function GET(request) {
   const related = pkgs.filter(x => x.id !== p.id).slice(0, 6);
   const ssr = `<article class="pp-ssr" style="padding:40px 0 60px;max-width:860px">
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/#store">FiveM Scripts</a> › <span>${esc(np.title)}</span></nav>
-<h1 style="margin:18px 0 6px">${esc(np.title)}${np.sub ? ` – ${esc(np.sub)}` : ""}</h1>
+${extra.keyword ? `<p style="margin:18px 0 0;opacity:.8">${esc(extra.keyword)}</p>` : ""}
+<h1 style="margin:6px 0 6px">${esc(np.title)}${np.sub ? ` – ${esc(np.sub)}` : ""}</h1>
+${extra.intro ? `<p>${esc(extra.intro)}</p>` : ""}
 <p><strong>$${price} ${esc(cur)}</strong> · FiveM script for ${esc(fwTxt)} · Instant delivery to your Cfx.re account via Tebex</p>
 <img src="${esc(img)}" alt="${esc(np.title)} – FiveM script" width="860" height="484" style="width:100%;height:auto;border-radius:10px;margin:16px 0">
 <h2>About ${esc(np.title)}</h2>
 <div class="pp-ssr-desc">${safeHtml(p.description)}</div>
+${faq.length ? `<h2>${esc(np.title)} FAQ</h2>${faq.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join("")}` : ""}
 ${related.length ? `<h2>More FiveM scripts</h2><ul>${related.map(r => `<li><a href="/scripts/${esc(slugOf(r))}">${esc(nameParts(r).title)}</a>${nameParts(r).sub ? ` – ${esc(nameParts(r).sub)}` : ""}</li>`).join("")}</ul>` : ""}
 </article>`;
 
