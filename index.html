@@ -18,7 +18,9 @@
 <meta name="twitter:title" content="Vision Scripts – Premium FiveM Scripts">
 <meta name="twitter:description" content="Premium FiveM scripts for QBCore, QBox &amp; ESX, sold through Tebex with instant delivery.">
 <meta name="twitter:image" content="https://www.vision-store.site/logo.webp">
-<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" as="image" href="/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -246,6 +248,7 @@ section{position:relative}
 .store-bar .chips>*{flex:none}
 .store-bar .sortbox{margin-left:auto}
 .store-bar .search{margin-left:0;flex:1;max-width:460px}
+.pp-intro{font-size:1.08em;color:var(--text);margin-bottom:1em}
 .chip-btn small{margin-left:6px;font-size:11.5px;font-weight:600;opacity:.6}
 .chip-sep{width:1px;height:24px;background:var(--line);margin:0 6px;align-self:center}
 .chip-btn.fw{height:34px;padding:0 13px;font-size:12.5px;border-style:dashed}
@@ -1716,6 +1719,7 @@ function seoFor(p){
   return {
     title: o.title || `${np.title} – FiveM Script${np.sub ? " | " + np.sub : ""}`,
     description: o.description || `${np.title}${np.sub ? ": " + np.sub : ""}. ${text}`.slice(0, 155).replace(/\s+\S*$/, "") + "…",
+    keyword: o.keyword || "", intro: o.intro || "", faq: Array.isArray(o.faq) ? o.faq : [],
   };
 }
 function setMeta({title, description, url, image, type}){
@@ -1791,7 +1795,7 @@ function renderProduct(p){
   $("#ppView").classList.remove("pp-in"); void $("#ppView").offsetWidth; $("#ppView").classList.add("pp-in");
   const np = nameParts(p);
   $("#ppCrumb").textContent = np.title;
-  $("#ppCat").textContent = seriesLabel(p);
+  $("#ppCat").textContent = seoFor(p).keyword || seriesLabel(p);
   $("#ppName").textContent = np.title;
   $("#ppSub").textContent = np.sub; $("#ppSub").hidden = !np.sub;
   $("#ppTag").textContent = st.tag; $("#ppTag").hidden = !st.tag;
@@ -1813,8 +1817,9 @@ function renderProduct(p){
   $("#ppBarName").textContent = np.title; $("#ppBarPrice").innerHTML = money(pi.now, pi.cur) + (pi.save > 0.009 ? ` <s style="opacity:.6">${money(pi.list, pi.cur)}</s>` : "");
   gallery.open(media, p.name);
 
-  const sec = [];
-  if(st.overview.length) sec.push(["overview", "Overview", `<span class="label"><b>01</b> Overview</span><h2>About <em>${esc(np.title)}</em></h2><div class="prose">${st.overview.join("")}</div>`]);
+  const sec = [], seo = seoFor(p);
+  const intro = seo.intro ? `<p class="pp-intro">${esc(seo.intro)}</p>` : "";
+  if(st.overview.length || intro) sec.push(["overview", "Overview", `<span class="label"><b>01</b> Overview</span><h2>About <em>${esc(np.title)}</em></h2><div class="prose">${intro}${st.overview.join("")}</div>`]);
   if(st.features.length) sec.push(["features", "Features", `<span class="label"><b>02</b> Features</span><h2>What's <em>inside</em></h2><div class="feat-grid">${st.features.map(f => `<div class="fcard${f.wide ? " wide" : ""}"><span class="fi">${svg(iconFor(f.title + " " + f.body))}</span><h3>${esc(f.title)}</h3><p>${esc(f.body)}</p></div>`).join("")}</div>`]);
   if(imgs.length > 1) sec.push(["media", "Screenshots", `<span class="label"><b>03</b> Gallery</span><h2>Screenshots</h2><div class="shots">${imgs.map((m, i) => `<button class="shot${i === 0 && imgs.length % 2 ? " big" : ""}" data-shot="${i}" aria-label="Open screenshot ${i + 1}"><img src="${esc(optImg(m.src, 828))}" srcset="${esc(srcset(m.src, [640, 828, 1080]))}" sizes="(max-width:700px) 92vw, 50vw" alt="${esc(nameParts(p).title)} FiveM script screenshot ${i + 1}" loading="lazy" decoding="async"></button>`).join("")}</div>`]);
   sec.push(["install", "Installation", `<span class="label"><b>04</b> Installation</span><h2>Up and running in <em>minutes</em></h2>
@@ -1829,8 +1834,9 @@ function renderProduct(p){
   if(!st.info.some(f => /support/i.test(f.title))) infoCards.push(`<div class="icard"><span class="fi">${svg("chat")}</span><div><h3>Support</h3><p>Questions or stuck on setup? Open a ticket in our Discord with your Cfx.re username.</p></div></div>`);
   sec.push(["support", "Support", `<span class="label"><b>05</b> Delivery &amp; support</span><h2>We've got you <em>covered</em></h2><div class="info-grid">${infoCards.join("")}</div>
     <div class="sec-cta"><a class="btn btn-ghost" href="${esc(CONFIG.DISCORD_URL)}" target="_blank" rel="noopener">Join Discord ${EXT}</a><a class="btn btn-ghost" href="${esc(docs)}" target="_blank" rel="noopener">Documentation ${EXT}</a></div>`]);
+  if(seo.faq.length) sec.push(["faq", "FAQ", `<span class="label"><b>06</b> FAQ</span><h2>${esc(np.title)} <em>FAQ</em></h2><div class="faq-list pp-faq">${seo.faq.map(([q, a]) => `<div class="qa"><button aria-expanded="false">${esc(q)}<span class="pm" aria-hidden="true"></span></button><div class="ans"><div><p>${esc(a)}</p></div></div></div>`).join("")}</div>`]);
   const others = sortList(packages.filter(x => x.id !== p.id), "rec").slice(0, 3);
-  if(others.length) sec.push(["more", "More scripts", `<span class="label"><b>06</b> Collection</span><h2>More from <em>Vision</em></h2><div class="grid pp-related" id="ppRelated">${others.map(cardHtml).join("")}</div>`]);
+  if(others.length) sec.push(["more", "More scripts", `<span class="label"><b>06</b> Collection</span><h2>More from <em>Vision</em></h2><div class="grid pp-related" id="ppRelated">${others.map((x, i) => cardHtml(x, i, false)).join("")}</div>`]);
   sec.forEach((x, i) => { x[2] = x[2].replace(/<b>0\d<\/b>/, `<b>${String(i + 1).padStart(2, "0")}</b>`); });
   $("#ppTabs").innerHTML = sec.map(([id, t]) => `<a href="${productHash(p)}" data-sec="pp-${id}">${t}</a>`).join("");
   $("#ppSections").innerHTML = sec.map(([id, , html]) => `<section class="pp-sec" id="pp-${id}">${html}</section>`).join("");
@@ -1854,6 +1860,7 @@ function setupSecSpy(){
 }
 $("#ppTabs").addEventListener("click", e => { const a = e.target.closest("a[data-sec]"); if(!a) return; e.preventDefault(); document.getElementById(a.dataset.sec)?.scrollIntoView({behavior: REDUCED ? "auto" : "smooth"}); });
 $("#ppSections").addEventListener("click", e => {
+  const qb = e.target.closest(".pp-faq .qa button"); if(qb){ const qa = qb.parentElement, open = !qa.classList.contains("open"); qa.classList.toggle("open", open); qb.setAttribute("aria-expanded", open); return; }
   const sh = e.target.closest("[data-shot]"); if(sh){ const imgs = getMedia(currentPkg).filter(m => m.type === "image").map(m => m.src); lightbox.open(imgs, Number(sh.dataset.shot)); return; }
   onCardClick(e);
 });
