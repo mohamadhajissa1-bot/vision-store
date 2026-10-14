@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Allow: /_vercel/image
 Disallow: /api/
+Disallow: /_shell
 
 Sitemap: https://www.vision-store.site/sitemap.xml
