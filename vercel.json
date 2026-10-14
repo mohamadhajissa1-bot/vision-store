@@ -1,6 +1,58 @@
 {
-  "rewrites": [
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/scripts/:slug", "destination": "/api/render?slug=:slug" }
+  "images": {
+    "sizes": [
+      384,
+      640,
+      828,
+      1080,
+      1600,
+      1920
+    ],
+    "formats": [
+      "image/avif",
+      "image/webp"
+    ],
+    "minimumCacheTTL": 2592000,
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "dunb17ur4ymx4.cloudfront.net"
+      }
+    ]
+  },
+  "routes": [
+    {
+      "src": "/(logo\\.svg|logo\\.webp)",
+      "headers": {
+        "Cache-Control": "public, max-age=604800, stale-while-revalidate=86400"
+      },
+      "continue": true
+    },
+    {
+      "src": "/_shell",
+      "dest": "/index.html",
+      "headers": {
+        "X-Robots-Tag": "noindex"
+      }
+    },
+    {
+      "src": "/",
+      "dest": "/api/home"
+    },
+    {
+      "src": "/sitemap\\.xml",
+      "dest": "/api/sitemap"
+    },
+    {
+      "src": "/scripts/([^/]+)/?",
+      "dest": "/api/render?slug=$1"
+    },
+    {
+      "src": "/scripts/?",
+      "status": 308,
+      "headers": {
+        "Location": "/#store"
+      }
+    }
   ]
 }
