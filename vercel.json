@@ -29,6 +29,25 @@
       "continue": true
     },
     {
+      "src": "/favicon\\.ico",
+      "dest": "/api/icon?s=48"
+    },
+    {
+      "src": "/favicon-48\\.png",
+      "dest": "/api/icon?s=48"
+    },
+    {
+      "src": "/(icon-192|apple-touch-icon)\\.png",
+      "dest": "/api/icon?s=192"
+    },
+    {
+      "src": "/favicon\\.svg",
+      "headers": {
+        "Cache-Control": "public, max-age=604800"
+      },
+      "continue": true
+    },
+    {
       "src": "/_shell",
       "dest": "/index.html",
       "headers": {
