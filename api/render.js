@@ -36,6 +36,8 @@ export async function GET(request) {
   const cur = p.currency || "USD";
   const title = seo.title.length <= 48 ? `${seo.title} | Vision Scripts` : seo.title;
 
+  // Digital goods: free, instant delivery worldwide via Tebex; all sales final.
+  const COUNTRIES = ["US","GB","CA","AU","NZ","IE","DE","FR","NL","BE","LU","AT","CH","ES","PT","IT","SE","NO","DK","FI","PL","CZ","RO","GR","HU","TR","SA","AE","QA","KW","BH","OM","JO","LB","EG","MA","IL","BR","MX","AR","IN","JP","KR","SG","ZA"];
   const ld = [
     {
       "@context": "https://schema.org", "@type": "Product", "@id": `${pageUrl}#product`,
@@ -46,6 +48,21 @@ export async function GET(request) {
       offers: {
         "@type": "Offer", url: pageUrl, price, priceCurrency: cur, availability: "https://schema.org/InStock",
         itemCondition: "https://schema.org/NewCondition",
+        shippingDetails: {
+          "@type": "OfferShippingDetails",
+          shippingRate: { "@type": "MonetaryAmount", value: 0, currency: cur },
+          shippingDestination: COUNTRIES.map(c => ({ "@type": "DefinedRegion", addressCountry: c })),
+          deliveryTime: {
+            "@type": "ShippingDeliveryTime",
+            handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 0, unitCode: "DAY" },
+            transitTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 0, unitCode: "DAY" }
+          }
+        },
+        hasMerchantReturnPolicy: {
+          "@type": "MerchantReturnPolicy",
+          applicableCountry: COUNTRIES,
+          returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted"
+        },
         seller: { "@type": "Organization", name: "Vision Scripts", url: `${SITE}/` }
       }
     },
